@@ -2,13 +2,6 @@ import cv2 as cv
 import numpy as np
 import time
 
-def imageHistogram(img):
-    histogram = np.zeros(256)
-    for x in range (img.shape[0]):
-        for y in range (img.shape[1]):
-            histogram[img[x, y]] += 1
-        return histogram
-
 def threshold(img, thresholdValue):
     for x in range(0, img.shape[0]):
         for y in range(0, img.shape[1]):
@@ -16,7 +9,46 @@ def threshold(img, thresholdValue):
                 img[x,y] = 255
             else:
                 img[x,y] = 0
-    return img
+        return img
+        
+def imageHistogram(img):
+    histogram = np.zeros(256)
+    for x in range (img.shape[0]):
+        for y in range (img.shape[1]):
+            histogram[img[x, y]] += 1
+        return histogram
+
+def calculateThreshold(img):
+    histogram = imageHistogram(img)
+    totalPixels = img.shape[0] * img.shape[1]
+    histogram = histogram / totalPixels
+    #This variable will store the highest difference in MEAN intensities of both classes of the most optimal Threshold value 
+    # We set it to 0 as its default value
+    maximumVariance = 0
+    #This variable will store our automatically determined 'optimal threshold'
+    # We set it to 0 as its default value
+    optimalThreshold = 0
+
+    #We loop through all the pixels
+    for x in range(256):
+        #The pixels that are in the background will be added to the 'w0' class
+        w0 = np.sum(histogram[:x + 1])
+
+        #The pixels that are in the foreground will be added to the 'w1' class
+        w1 = np.sum(histogram[x + 1:])
+
+        if w0 == 0 or w1 == 0:
+            continue
+
+        μ0 = np.sum(np.arange(0, x + 1) * histogram[:x + 1]) / w0
+        μ1 = np.sum(np.arange(x + 1, 256) * histogram[x + 1:]) / w1
+
+        variance = w0 * w1 + (μ0 - μ1) ** 2
+
+        if variance > maximumVariance:
+            maximumVariance = variance
+            optimalThreshold = x
+    return optimalThreshold
 
 for i in range(1, 16):
     #We use the '.imread()' function in the OpenCV library to read in all our images into memory
@@ -37,6 +69,11 @@ for i in range(1, 16):
     #    for this task
 
     #KNOWLEDGE - OTSU's THRESHOLDING APPROACH
+    # FORMULA: w0​ *w1​(μ0 ​− μ1​)²
+    # w0 - % of Class 0
+    #  w1 - % of Class 1
+    #   μ0 - Mean of Class 0
+    #    μ1​ - Mean of Class 1
     # 1) We check every possible threshold value (E.g. threshold = 200) from 0 to 255 and for every threshold we split
     #       the pixels into TWO classes. One class stores the pixels that have an intensity HIGHER than the threshold. The
     #       other class stores the pixels with intensity LOWER than the threshold value.
@@ -56,8 +93,10 @@ for i in range(1, 16):
     #STEP 1b: Detecting the Optimal Threshold (OTSU's Method)
     #Now that we have our histogram, we want to convert our image from Grayscale (I.e. 0 - 255) to Binary (I.e. 0 OR 255) 
     # We want the optimal threshold point to be set automatically as the images slightly differ from one another. 
-    threshold = 100
-    bw = threshold(img, threshold)
+    thresholdValue = calculateThreshold(img)
+    print("Optimal Threshold Chosen: ", thresholdValue)
+    bw = threshold(img, thresholdValue)
+    
     rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image
     cv.putText(rgb, "Image: " + str(i), (40, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)

@@ -12,8 +12,9 @@ def threshold(img, thresh):
     return img
 
 for i in range(1, 16):
-    #read in an image into memory
-    img = cv.imread('c:/users/tommy/Downloads/Orings/Oring' + str(i) + '.jpg',0)
+    #We use the '.imread()' function in the OpenCV library to read in all our images into memory
+    # NOTE: Since our images are grayscale and we want to load them that way, set add an extra argument at the end  '0'.
+    img = cv.imread('c:/users/tommy/Downloads/Orings/Oring' + str(i) + '.jpg', 0)
     thresh = 100
     bw = threshold(img, thresh)
     rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)

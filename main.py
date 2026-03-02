@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+import matplotlib.pyplot as plt
 import time
 
 def threshold(img, thresholdValue):
@@ -9,14 +10,14 @@ def threshold(img, thresholdValue):
                 img[x,y] = 255
             else:
                 img[x,y] = 0
-        return img
+    return img
         
 def imageHistogram(img):
     histogram = np.zeros(256)
     for x in range (img.shape[0]):
         for y in range (img.shape[1]):
             histogram[img[x, y]] += 1
-        return histogram
+    return histogram
 
 def calculateThreshold(img):
     histogram = imageHistogram(img)
@@ -61,7 +62,14 @@ for i in range(1, 16):
     #  NOTE: Since we are looking at grayscale images, when we refer to intensitry, we refer to the brigthness of the image.
     #  - If the intensity of the pixel is high, that means our pixel is brighter, and closer to 255.
     #  - If the intensity of the pixel is low, that means our pixel is darker, and closer to 0. 
-    
+    pixelIntensityHistogram = imageHistogram(img)
+    plt.figure(figsize = (8, 4))
+    plt.scatter(range(256), pixelIntensityHistogram, color = 'grey', s = 10)
+    plt.title(f"Grayscale Histogram for O-Ring {i}")
+    plt.xlabel("Pixel Intensity [0 = BLACK, 255 = WHITE]")
+    plt.ylabel("Number of Pixels")
+    plt.show()
+
     #KNOWLEDGE - Why do we convert the image from Grayscale to Binary?
     # Because we are ONLY concerned with whether the O-Rings are normal or defective,
     #  making this is a BINARY problem.
@@ -90,13 +98,13 @@ for i in range(1, 16):
     #               there isn't any class that is almost empty or too full.
     # 4) Otsu's determines the most optimal threshold according to the classes being meaningfully sized and mean intensities are far apart
 
-    #STEP 1b: Detecting the Optimal Threshold (OTSU's Method)
+    #STEP 1b: Detecting the Optimal Threshold (OTSU's Method
     #Now that we have our histogram, we want to convert our image from Grayscale (I.e. 0 - 255) to Binary (I.e. 0 OR 255) 
     # We want the optimal threshold point to be set automatically as the images slightly differ from one another. 
     thresholdValue = calculateThreshold(img)
     print("Optimal Threshold Chosen: ", thresholdValue)
     bw = threshold(img, thresholdValue)
-    
+
     rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image
     cv.putText(rgb, "Image: " + str(i), (40, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)

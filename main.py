@@ -2,10 +2,17 @@ import cv2 as cv
 import numpy as np
 import time
 
-def threshold(img, thresh):
+def imageHistogram(img):
+    histogram = np.zeros(256)
+    for x in range (img.shape[0]):
+        for y in range (img.shape[1]):
+            histogram[img[x, y]] += 1
+        return histogram
+
+def threshold(img, thresholdValue):
     for x in range(0, img.shape[0]):
         for y in range(0, img.shape[1]):
-            if img[x,y] > thresh:
+            if img[x,y] > thresholdValue:
                 img[x,y] = 255
             else:
                 img[x,y] = 0
@@ -15,8 +22,42 @@ for i in range(1, 16):
     #We use the '.imread()' function in the OpenCV library to read in all our images into memory
     # NOTE: Since our images are grayscale and we want to load them that way, set add an extra argument at the end  '0'.
     img = cv.imread('c:/users/tommy/Downloads/Orings/Oring' + str(i) + '.jpg', 0)
-    thresh = 100
-    bw = threshold(img, thresh)
+
+    #STEP 1: Image Histogram [0 = BLACK, 255 = WHITE]
+    #First off, we want to determine how many pixels in each O-Ring image is part of every intensity level.
+    # We use an image histogram to do this, and we will check every intensitry level from 0 to 255. 
+    #  NOTE: Since we are looking at grayscale images, when we refer to intensitry, we refer to the brigthness of the image.
+    #  - If the intensity of the pixel is high, that means our pixel is brighter, and closer to 255.
+    #  - If the intensity of the pixel is low, that means our pixel is darker, and closer to 0. 
+    
+    #KNOWLEDGE - Why do we convert the image from Grayscale to Binary?
+    # Because we are ONLY concerned with whether the O-Rings are normal or defective,
+    #  making this is a BINARY problem.
+    #   We do loose information by thresholding but we maintain ONLY information we need
+    #    for this task
+
+    #KNOWLEDGE - OTSU's THRESHOLDING APPROACH
+    # 1) We check every possible threshold value (E.g. threshold = 200) from 0 to 255 and for every threshold we split
+    #       the pixels into TWO classes. One class stores the pixels that have an intensity HIGHER than the threshold. The
+    #       other class stores the pixels with intensity LOWER than the threshold value.
+    # 2a) Next, we calculate the mean intensity of each class. This means we look at the intensity value of each pixel in the LOWER class,
+    #        and calculate the mean of them. We do the same for the pixels in the HIGHER than threshold class.
+    #        We repeat this process for every threshold value, meaning we have (255 x 2) MEAN values.
+    # 2b) Afterwards, we also calculate the probability of each class, so the proportion of pixels that are HIGHER and LOWER than the threshold.
+    # 3) Next, we comparse the mean intensity's we got from Part 2a. IF, the mean values of the HIGHER class is far apart from the LOWER class, then
+    #       that means we have found a good value that SEPARATES our foreground from background pixels. If the mean intensity's are close, then that
+    #       means that the threshold values does not SEPARATE our classes well.
+    #       NOTE: Otsu's Method also considers the PROPORTION of pixels from Part 2b. This means a threshold value that separates the mean intensity's well
+    #           but has a LARGE class imbalance is not chosen.
+    #           NOTE: Otsu does NOT determine a good class balance if they are EQUALLY-SIZED (E.g. 50% of pixels BELOW, 50% of pixels ABOVE), but rather any split AS LONG AS
+    #               there isn't any class that is almost empty or too full.
+    # 4) Otsu's determines the most optimal threshold according to the classes being meaningfully sized and mean intensities are far apart
+
+    #STEP 1b: Detecting the Optimal Threshold (OTSU's Method)
+    #Now that we have our histogram, we want to convert our image from Grayscale (I.e. 0 - 255) to Binary (I.e. 0 OR 255) 
+    # We want the optimal threshold point to be set automatically as the images slightly differ from one another. 
+    threshold = 100
+    bw = threshold(img, threshold)
     rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image
     cv.putText(rgb, "Image: " + str(i), (40, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)

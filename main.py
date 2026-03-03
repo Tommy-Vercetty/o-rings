@@ -51,6 +51,33 @@ def calculateThreshold(img):
             optimalThreshold = x
     return optimalThreshold
 
+def erosion(img, k = 1):
+    #Since 'img.shape' stores our Height and Width as a tuple, we declare them together on the same line
+    imageHeight, imageWidth = img.shape
+    erodedImage = np.zeros_like(img)
+
+    for x in range (k, imageHeight - k):
+        for y in range (k, imageWidth - k):
+            window = img[x - k: x + k + 1, y - k: y + k + 1]
+            if np.all(window == 255):
+                erodedImage[x, y] = 255
+            else:
+                erodedImage[x, y] = 0
+    return erodedImage
+
+def dilation(img, k = 1):
+    imageHeight, imageWidth = img.shape
+    dilatedImage = np.zeros_like(img)
+
+    for x in range (k, imageHeight - k):
+        for y in range (k, imageWidth - k):
+            window = img[x - k: x + k + 1, y - k: y + k + 1]
+            if np.any(window == 255):
+                dilatedImage[x, y] = 255
+            else:
+                dilatedImage[x, y] = 0
+    return dilatedImage
+
 for i in range(1, 16):
     #We use the '.imread()' function in the OpenCV library to read in all our images into memory
     # NOTE: Since our images are grayscale and we want to load them that way, set add an extra argument at the end  '0'.
@@ -62,6 +89,10 @@ for i in range(1, 16):
     #  NOTE: Since we are looking at grayscale images, when we refer to intensitry, we refer to the brigthness of the image.
     #  - If the intensity of the pixel is high, that means our pixel is brighter, and closer to 255.
     #  - If the intensity of the pixel is low, that means our pixel is darker, and closer to 0. 
+
+    #STEP 2: Detecting the Optimal Threshold (OTSU's Method)
+    #Now that we have our histogram, we want to convert our image from Grayscale (I.e. 0 - 255) to Binary (I.e. 0 OR 255) 
+    # We want the optimal threshold point to be set automatically as the images slightly differ from one another. 
     pixelIntensityHistogram = imageHistogram(img)
     plt.figure(figsize = (8, 4))
     plt.scatter(range(256), pixelIntensityHistogram, color = 'grey', s = 10)
@@ -77,7 +108,7 @@ for i in range(1, 16):
     #    for this task
 
     #KNOWLEDGE - OTSU's THRESHOLDING APPROACH
-    # FORMULA: w0​ *w1​(μ0 ​− μ1​)²
+    # FORMULA: w0 ​* w1​(μ0 ​− μ1​)²
     # w0 - % of Class 0
     #  w1 - % of Class 1
     #   μ0 - Mean of Class 0
@@ -98,19 +129,51 @@ for i in range(1, 16):
     #               there isn't any class that is almost empty or too full.
     # 4) Otsu's determines the most optimal threshold according to the classes being meaningfully sized and mean intensities are far apart
 
-    #KNOWLEDGE - Binary Morphology Types
-    # 1) EROSION - Shrinks WHITE regions. Used to remove noise
-    # 2) DILATION - Expands WHITE regions. Used to fill in small gaps or holes
-    #   
+    #KNOWLEDGE - Binary Morphology
+    #Binary Morphology is an image processing technique that usually acts on the foreground.
+    # That is why we will flip the Foreground and Background classes (I.e. Our rings will be white and our background will be black) 
+    # Types of Binary Morphology
+    # EROSION: Used to remove noise/ small blobs
+    # Step 1) Looks at its 3x3 neighbourhood
+    # Step 2) If ALL pixels in that window are WHITE, 'current pixel' = WHITE
+    # Step 3) If even one pixel is BLACK, 'current pixel = BLACK'
+    
+    # DILATION: Used to fill in small gaps or holes
+    # Step 1) Looks at its 3x3 neighbourhood
+    # Step 2) If ANY pixels in that window are WHITE, 'current pixel' = WHITE
+    # Step 3) If even one pixel is BLACK, 'current pixel = BLACK'
+      
     # 3) OPENING = EROSION + DILATION - Used to remove ISOLATED WHITE noise/ pixels 
     # 4) CLOSING = DILATION + EROSION - Used to fill small holes inside 
-
-    #STEP 1b: Detecting the Optimal Threshold (OTSU's Method
-    #Now that we have our histogram, we want to convert our image from Grayscale (I.e. 0 - 255) to Binary (I.e. 0 OR 255) 
-    # We want the optimal threshold point to be set automatically as the images slightly differ from one another. 
     thresholdValue = calculateThreshold(img)
     print("Optimal Threshold Chosen: ", thresholdValue)
     bw = threshold(img, thresholdValue)
+    #Switching the Foreground (O-Rings) to WHITE, and the Background to BLACK
+    # We do this as Binary Morphology techniques operate on WHITE FOREGROUND objects
+    bw = 255 - bw
+
+    #ERODED Image
+    erodedImage = erosion(bw, k = 1)
+    #DILATED Image
+    dilatedImage = dilation(bw, k = 1)
+
+    plt.figure(figsize = (12, 4))
+
+    #Displaying the Original image
+    plt.subplot(1, 3, 1)
+    plt.title(f"Original O-Ring {i}")
+    plt.imshow(bw, cmap = 'gray')
+
+    #Displaying the image after its been eroded
+    plt.subplot(1, 3, 2)
+    plt.title(f"Eroded O-Ring {i}")
+    plt.imshow(erodedImage, cmap = 'gray')
+
+    #Displaying the image after its been dilated
+    plt.subplot(1, 3, 3)
+    plt.title(f"Dilated O-Ring {i}")
+    plt.imshow(dilatedImage, cmap = 'gray')
+    plt.show()
 
     #FIXED!!! - Due to error in threshold calculation
     #Fixing/ Inverting O-Rings whose pixels have all been determined to be 255 AFTER Thresholding
@@ -131,10 +194,9 @@ for i in range(1, 16):
 
     rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image
-    cv.putText(rgb, "Image: " + str(i), (40, 40), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+    #cv.putText(rgb, "Image: " + str(i), (25, 25), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     #Annotating the image with a circle.
-    cv.circle(rgb, (40, 40), 20, (0, 0, 255))
+    #cv.circle(rgb, (40, 40), 20, (0, 0, 255))
     #We can show the image using the OpenCV open function
-    cv.imshow('thresholded image', rgb)
     cv.waitKey(0)
     cv.destroyAllWindows()

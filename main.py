@@ -44,7 +44,7 @@ def calculateThreshold(img):
         μ0 = np.sum(np.arange(0, x + 1) * histogram[:x + 1]) / w0
         μ1 = np.sum(np.arange(x + 1, 256) * histogram[x + 1:]) / w1
 
-        variance = w0 * w1 + (μ0 - μ1) ** 2
+        variance = w0 * w1 * (μ0 - μ1) ** 2
 
         if variance > maximumVariance:
             maximumVariance = variance
@@ -98,12 +98,36 @@ for i in range(1, 16):
     #               there isn't any class that is almost empty or too full.
     # 4) Otsu's determines the most optimal threshold according to the classes being meaningfully sized and mean intensities are far apart
 
+    #KNOWLEDGE - Binary Morphology Types
+    # 1) EROSION - Shrinks WHITE regions. Used to remove noise
+    # 2) DILATION - Expands WHITE regions. Used to fill in small gaps or holes
+    #   
+    # 3) OPENING = EROSION + DILATION - Used to remove ISOLATED WHITE noise/ pixels 
+    # 4) CLOSING = DILATION + EROSION - Used to fill small holes inside 
+
     #STEP 1b: Detecting the Optimal Threshold (OTSU's Method
     #Now that we have our histogram, we want to convert our image from Grayscale (I.e. 0 - 255) to Binary (I.e. 0 OR 255) 
     # We want the optimal threshold point to be set automatically as the images slightly differ from one another. 
     thresholdValue = calculateThreshold(img)
     print("Optimal Threshold Chosen: ", thresholdValue)
     bw = threshold(img, thresholdValue)
+
+    #FIXED!!! - Due to error in threshold calculation
+    #Fixing/ Inverting O-Rings whose pixels have all been determined to be 255 AFTER Thresholding
+    #numberOfBlackPixels = np.sum(bw == 0)
+    #print("Number of Black Pixels in Image: ", numberOfBlackPixels)
+    #numberOfWhitePixels = np.sum(bw == 255)
+    #print("Number of White Pixels in Image: ", numberOfWhitePixels)
+    #totalNumberOfPixels = bw.size
+    #blackPixelRatio = numberOfBlackPixels / totalNumberOfPixels
+    #if blackPixelRatio < 0.02:
+    #    print("O-Ring likely misclassified.")
+    #    bw = 255 - bw
+    
+    #STEP 2: Binary Morphology
+    # Now that we have all of our images in Binary thanks to our Thresholding, we need to clean the images up:
+    #  1) Small amounts of noise are present in some images and are scattered throughout the image
+    #  2) White noise within the O-Rings needs should not be present
 
     rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image

@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
+#STEP 2
 def threshold(img, thresholdValue):
     for x in range(0, img.shape[0]):
         for y in range(0, img.shape[1]):
@@ -11,7 +12,8 @@ def threshold(img, thresholdValue):
             else:
                 img[x,y] = 0
     return img
-        
+
+#STEP 1    
 def imageHistogram(img):
     histogram = np.zeros(256)
     for x in range (img.shape[0]):
@@ -19,6 +21,7 @@ def imageHistogram(img):
             histogram[img[x, y]] += 1
     return histogram
 
+#STEP 2
 def calculateThreshold(img):
     histogram = imageHistogram(img)
     totalPixels = img.shape[0] * img.shape[1]
@@ -51,6 +54,7 @@ def calculateThreshold(img):
             optimalThreshold = x
     return optimalThreshold
 
+#STEP 3
 def erosion(img, k = 1):
     #Since 'img.shape' stores our Height and Width as a tuple, we declare them together on the same line
     imageHeight, imageWidth = img.shape
@@ -93,11 +97,27 @@ for i in range(1, 16):
     #STEP 2: Detecting the Optimal Threshold (OTSU's Method)
     #Now that we have our histogram, we want to convert our image from Grayscale (I.e. 0 - 255) to Binary (I.e. 0 OR 255) 
     # We want the optimal threshold point to be set automatically as the images slightly differ from one another. 
+    
+    #STEP 3: Binary Morphology
+    # Now that we have all of our images in Binary thanks to our Thresholding, we need to clean the images up:
+    #  1) Small amounts of noise are present in some images and are scattered throughout the image
+    #  2) White noise within the O-Rings needs should not be present
+
+    #STEP 4: Connected Component Labelling (CCL)
+    #Our image now has the foreground parts as WHITE/ 255 and the background parts as BLACK/ 0
+    # Let's take our O-Ring image as our example. We have the main part of the foreground which is our O-Ring.
+    #  We also have other parts such as broken off parts of rubber from the O-Rings (Referred to as noise), that are NOT
+    #   connected or pixel-linked to the O-Ring
+    #    CCL Technique basically traverses the image and assign labels to these regions/ parts, to allow us to REMOVE them  
+    #     NOTE: Once labeled, we can then also calculate properties such as:
+    #     - Area, Perimeter, Bounding Box, Circularity etc.
+    #      The CORE idea behind CCL is that we STRUCTURE the image into seperate OBJECTS
+    #STEP 1
     pixelIntensityHistogram = imageHistogram(img)
     plt.figure(figsize = (8, 4))
     plt.scatter(range(256), pixelIntensityHistogram, color = 'grey', s = 10)
     plt.title(f"Grayscale Histogram for O-Ring {i}")
-    plt.xlabel("Pixel Intensity [0 = BLACK, 255 = WHITE]")
+    plt.xlabel("Pixel Intensity {0 = BLACK, 255 = WHITE}")
     plt.ylabel("Number of Pixels")
     plt.show()
 
@@ -132,7 +152,9 @@ for i in range(1, 16):
     #KNOWLEDGE - Binary Morphology
     #Binary Morphology is an image processing technique that usually acts on the foreground.
     # That is why we will flip the Foreground and Background classes (I.e. Our rings will be white and our background will be black) 
+    # --------------------------
     # Types of Binary Morphology
+    # --------------------------
     # EROSION: Used to remove noise/ small blobs
     # Step 1) Looks at its 3x3 neighbourhood
     # Step 2) If ALL pixels in that window are WHITE, 'current pixel' = WHITE
@@ -145,6 +167,8 @@ for i in range(1, 16):
       
     # 3) OPENING = EROSION + DILATION - Used to remove ISOLATED WHITE noise/ pixels 
     # 4) CLOSING = DILATION + EROSION - Used to fill small holes inside 
+    
+
     thresholdValue = calculateThreshold(img)
     print("Optimal Threshold Chosen: ", thresholdValue)
     bw = threshold(img, thresholdValue)
@@ -155,7 +179,7 @@ for i in range(1, 16):
     #ERODED Image
     erodedImage = erosion(bw, k = 1)
     #DILATED Image
-    dilatedImage = dilation(bw, k = 1)
+    dilatedImage = dilation(bw, k = 2)
 
     plt.figure(figsize = (12, 4))
 
@@ -163,16 +187,21 @@ for i in range(1, 16):
     plt.subplot(1, 3, 1)
     plt.title(f"Original O-Ring {i}")
     plt.imshow(bw, cmap = 'gray')
+    plt.axis("off")
 
     #Displaying the image after its been eroded
     plt.subplot(1, 3, 2)
     plt.title(f"Eroded O-Ring {i}")
     plt.imshow(erodedImage, cmap = 'gray')
+    plt.axis("off")
 
-    #Displaying the image after its been dilated
+    #Displaying the eroded image after its been dilated
     plt.subplot(1, 3, 3)
     plt.title(f"Dilated O-Ring {i}")
     plt.imshow(dilatedImage, cmap = 'gray')
+    plt.axis("off")
+
+    #Display the figure that contains all images
     plt.show()
 
     #FIXED!!! - Due to error in threshold calculation
@@ -186,11 +215,6 @@ for i in range(1, 16):
     #if blackPixelRatio < 0.02:
     #    print("O-Ring likely misclassified.")
     #    bw = 255 - bw
-    
-    #STEP 2: Binary Morphology
-    # Now that we have all of our images in Binary thanks to our Thresholding, we need to clean the images up:
-    #  1) Small amounts of noise are present in some images and are scattered throughout the image
-    #  2) White noise within the O-Rings needs should not be present
 
     rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image

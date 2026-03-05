@@ -153,7 +153,7 @@ def ccl8Neighbours(img):
                     cx, cy = objectStack.pop()
                     for dx, dy in neighbours:
                         nx, ny = cx + dx, cy + dy
-                        if 0 <= nx < imageHeight and 0 <= imageWidth:
+                        if 0 <= nx < imageHeight and 0 <= ny < imageWidth:
                             if img[nx, ny] == 255 and imageLabels[nx, ny] == 0:
                                 imageLabels[nx, ny] = currentLabel
                                 objectStack.append((nx, ny))
@@ -161,7 +161,22 @@ def ccl8Neighbours(img):
 
     return imageLabels, currentLabel - 1
 
+def areaOfRing(cleanedImage, oRingNumber):
+    acceptanceTruncationPoint = 0.95
 
+    area = np.sum(cleanedImage == 255)
+
+    oRingPercentage = area / oRingMean
+
+    print(f"O-Ring {oRingNumber} - Area: ", area)
+    print(f"O-Ring {oRingNumber} - % Expected Area: {oRingPercentage * 100:.2f}%")
+
+    if oRingPercentage < acceptanceTruncationPoint:
+        print(f"O-Ring {oRingNumber}: FAULTY\n")
+        return area, oRingPercentage, "FAULTY"
+    else:
+        print(f"O-Ring {oRingNumber}: PASSED\n")
+        return area, oRingPercentage, "PASSED"
 
 for i in range(1, 16):
     #We use the '.imread()' function in the OpenCV library to read in all our images into memory
@@ -228,20 +243,23 @@ for i in range(1, 16):
     erodedImage = erosion(bw, k = 1)
 
     #DILATED Image
-    dilatedImage = dilation(bw, k = 1)
+    dilatedImage = dilation(erodedImage, k = 1)
 
     #CLEANED Image
     imageLabels, numberOfLabels = ccl8Neighbours(dilatedImage)
     print("Number of Components Detected: ", numberOfLabels)
 
     #Here we keep only the larget component, being the O-Ring
-    imageAreas = [np.sum(imageLabels == i)
+    imageAreas = [np.sum(imageLabels == x)
                   for x in range(1, numberOfLabels + 1)
                   ]
     largestLabel = np.argmax(imageAreas) + 1 
 
     cleanedImage = np.zeros_like(imageLabels, dtype = np.uint8)
     cleanedImage[imageLabels == largestLabel] = 255
+
+    #CALCULATING AREA
+    area, percentage, result = areaOfRing(cleanedImage, i)
 
     plt.figure(figsize = (16, 5))
     #Displaying the Original image

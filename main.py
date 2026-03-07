@@ -162,7 +162,7 @@ def ccl8Neighbours(img):
     return imageLabels, currentLabel - 1
 
 def areaOfRing(cleanedImage, oRingNumber):
-    acceptanceTruncationPoint = 0.95
+    acceptanceTruncationPoint = 0.97
 
     area = np.sum(cleanedImage == 255)
 
@@ -178,11 +178,16 @@ def areaOfRing(cleanedImage, oRingNumber):
         print(f"O-Ring {oRingNumber}: PASSED\n")
         return area, oRingPercentage, "PASSED"
 
+allORingAreas = []
+cleanedImages = []
+
 for i in range(1, 16):
     #We use the '.imread()' function in the OpenCV library to read in all our images into memory
     # NOTE: Since our images are grayscale and we want to load them that way, set add an extra argument at the end  '0'.
     img = cv.imread('c:/users/tommy/Downloads/Orings/Oring' + str(i) + '.jpg', 0)
-
+    #Make a copy of the images, so that we can display it to compare against Thresholded version
+    originalImage = img.copy()
+    
     #STEP 1: Image Histogram [0 = BLACK, 255 = WHITE]
     #First off, we want to determine how many pixels in each O-Ring image is part of every intensity level.
     # We use an image histogram to do this, and we will check every intensitry level from 0 to 255. 
@@ -234,16 +239,16 @@ for i in range(1, 16):
 
     thresholdValue = calculateThreshold(img)
     print("Optimal Threshold Chosen: ", thresholdValue)
-    bw = threshold(img, thresholdValue)
+    thresholdedImage = threshold(img, thresholdValue)
     #Switching the Foreground (O-Rings) to WHITE, and the Background to BLACK
     # We do this as Binary Morphology techniques operate on WHITE FOREGROUND objects
-    bw = 255 - bw
+    thresholdedImage = 255 - thresholdedImage
 
     #ERODED Image
-    erodedImage = erosion(bw, k = 1)
+    erodedImage = erosion(thresholdedImage, k = 1)
 
     #DILATED Image
-    dilatedImage = dilation(erodedImage, k = 1)
+    dilatedImage = dilation(erodedImage, k = 2)
 
     #CLEANED Image
     imageLabels, numberOfLabels = ccl8Neighbours(dilatedImage)
@@ -259,29 +264,45 @@ for i in range(1, 16):
     cleanedImage[imageLabels == largestLabel] = 255
 
     #CALCULATING AREA
-    area, percentage, result = areaOfRing(cleanedImage, i)
+    area = np.sum(cleanedImage == 255)
+    allORingAreas.append(area)
+    cleanedImages.append(cleanedImage)
+    print(f"O-Ring {i} Area: ", area)
 
     plt.figure(figsize = (16, 5))
-    #Displaying the Original image
-    plt.subplot(1, 4, 1)
+
+    #Displaying the original image
+    plt.subplot(1, 6, 1)
     plt.title(f"Original O-Ring {i}")
-    plt.imshow(bw, cmap = 'gray')
+    plt.imshow(originalImage, cmap = 'gray')
+    plt.axis("off")
+
+    #Displaying the thresholded image
+    plt.subplot(1, 6, 2)
+    plt.title(f"Thresholded O-Ring {i}")
+    plt.imshow(img, cmap = 'gray')
+    plt.axis("off")
+    
+    #Displaying the binary inverted image
+    plt.subplot(1, 6, 3)
+    plt.title(f"Thresholded O-Ring {i}")
+    plt.imshow(thresholdedImage, cmap = 'gray')
     plt.axis("off")
 
     #Displaying the image after its been eroded
-    plt.subplot(1, 4, 2)
+    plt.subplot(1, 6, 4)
     plt.title(f"Eroded O-Ring {i}")
     plt.imshow(erodedImage, cmap = 'gray')
     plt.axis("off")
 
     #Displaying the eroded image after its been dilated
-    plt.subplot(1, 4, 3)
+    plt.subplot(1, 6, 5)
     plt.title(f"Dilated O-Ring {i}")
     plt.imshow(dilatedImage, cmap = 'gray')
     plt.axis("off")
 
     #Displaying the Cleaned image after its been CCL'd
-    plt.subplot(1, 4, 4)
+    plt.subplot(1, 6, 6)
     plt.title(f"Cleaned O-Ring {i}")
     plt.imshow(cleanedImage, cmap = 'gray')
     plt.axis("off")
@@ -290,17 +311,17 @@ for i in range(1, 16):
 
     #FIXED!!! - Due to error in threshold calculation
     #Fixing/ Inverting O-Rings whose pixels have all been determined to be 255 AFTER Thresholding
-    #numberOfBlackPixels = np.sum(bw == 0)
+    #numberOfBlackPixels = np.sum(thresholdedImage == 0)
     #print("Number of Black Pixels in Image: ", numberOfBlackPixels)
-    #numberOfWhitePixels = np.sum(bw == 255)
+    #numberOfWhitePixels = np.sum(thresholdedImage == 255)
     #print("Number of White Pixels in Image: ", numberOfWhitePixels)
-    #totalNumberOfPixels = bw.size
+    #totalNumberOfPixels = thresholdedImage.size
     #blackPixelRatio = numberOfBlackPixels / totalNumberOfPixels
     #if blackPixelRatio < 0.02:
     #    print("O-Ring likely misclassified.")
-    #    bw = 255 - bw
+    #    thresholdedImage = 255 - thresholdedImage
 
-    rgb = cv.cvtColor(bw, cv.COLOR_GRAY2RGB)
+    rgb = cv.cvtColor(thresholdedImage, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image
     #cv.putText(rgb, "Image: " + str(i), (25, 25), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
     #Annotating the image with a circle.
@@ -308,3 +329,10 @@ for i in range(1, 16):
     #We can show the image using the OpenCV open function
     cv.waitKey(0)
     cv.destroyAllWindows()
+
+oRingMean = np.mean(allORingAreas)
+print("\n Mean O-Ring Area: , ", oRingMean)
+print("------")
+
+for i in range(len(cleanedImages)):
+    areaOfRing(cleanedImages[i], i + 1)

@@ -161,27 +161,31 @@ def ccl8Neighbours(img):
 
     return imageLabels, currentLabel - 1
 
-def areaOfRing(cleanedImage, oRingNumber):
-    acceptanceTruncationPoint = 0.97
+def oRingCircularityEvaluation(cleanedImage, oRingNumber, circularityTruncationPoint):
+    
+    #First thing we need to do is find the circumference of the O-Rings
+    ringCircumference, _ = cv.findContours(cleanedImage, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+    
+    largestCircumference = max(ringCircumference, key = cv.contourArea)
+    ringArea = cv.contourArea(largestCircumference)
+    ringPerimeter = cv.arcLength(largestCircumference, True)
 
-    area = np.sum(cleanedImage == 255)
+    if (ringPerimeter == 0):
+        ringCircularity = 0
+    else: 
+        ringCircularity = 4 * np.pi * (ringArea / (ringPerimeter ** 2))
+    
+    print(f"O-Ring {oRingNumber} Circularity: {ringCircularity:.3f}")
 
-    oRingPercentage = area / oRingMean
-
-    print(f"O-Ring {oRingNumber} - Area: ", area)
-    print(f"O-Ring {oRingNumber} - % Expected Area: {oRingPercentage * 100:.2f}%")
-
-    if oRingPercentage < acceptanceTruncationPoint:
+    if ringCircularity < circularityTruncationPoint:
         print(f"O-Ring {oRingNumber}: FAULTY\n")
-        return area, oRingPercentage, "FAULTY"
+        return ringCircularity, "FAULTY"
     else:
         print(f"O-Ring {oRingNumber}: PASSED\n")
-        return area, oRingPercentage, "PASSED"
-
-allORingAreas = []
-cleanedImages = []
+        return ringCircularity, "PASSED"
 
 for i in range(1, 16):
+    startTime = time.time()
     #We use the '.imread()' function in the OpenCV library to read in all our images into memory
     # NOTE: Since our images are grayscale and we want to load them that way, set add an extra argument at the end  '0'.
     img = cv.imread('c:/users/tommy/Downloads/Orings/Oring' + str(i) + '.jpg', 0)
@@ -263,14 +267,15 @@ for i in range(1, 16):
     cleanedImage = np.zeros_like(imageLabels, dtype = np.uint8)
     cleanedImage[imageLabels == largestLabel] = 255
 
-    #CALCULATING AREA
-    area = np.sum(cleanedImage == 255)
-    allORingAreas.append(area)
-    cleanedImages.append(cleanedImage)
-    print(f"O-Ring {i} Area: ", area)
+    #CALCULATING CIRCULARITY
+    #We could technically set the threshold to be as low as 0.87, as the highest circularity
+    # for the class of FAULTY O-Rings is 0.884 for O-Ring 1
+    oRingCircularity, oRingStatus = oRingCircularityEvaluation(cleanedImage, i, 0.89)
 
+    #To calculate the execution time of each O-Ring we use the 'time()' function in Python
+    endTime = time.time() - startTime
+    #O-RING DISPLAYED AFTER EACH STEP
     plt.figure(figsize = (16, 5))
-
     #Displaying the original image
     plt.subplot(1, 6, 1)
     plt.title(f"Original O-Ring {i}")
@@ -285,7 +290,7 @@ for i in range(1, 16):
     
     #Displaying the binary inverted image
     plt.subplot(1, 6, 3)
-    plt.title(f"Thresholded O-Ring {i}")
+    plt.title(f"Binary Inverted O-Ring {i}")
     plt.imshow(thresholdedImage, cmap = 'gray')
     plt.axis("off")
 
@@ -321,18 +326,19 @@ for i in range(1, 16):
     #    print("O-Ring likely misclassified.")
     #    thresholdedImage = 255 - thresholdedImage
 
+    fontSize = 0.5
     rgb = cv.cvtColor(thresholdedImage, cv.COLOR_GRAY2RGB)
     #Annotating the image. We are adding the word Hello in colour blue on the image
-    #cv.putText(rgb, "Image: " + str(i), (25, 25), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
-    #Annotating the image with a circle.
-    #cv.circle(rgb, (40, 40), 20, (0, 0, 255))
+    cv.putText(rgb, f"Image: {i}", (10, 20), cv.FONT_HERSHEY_SIMPLEX, fontSize, (255, 255, 255))
+    #Annotating the image with whether it is FAULTY or PASS.
+    cv.putText(rgb, f"Status: {oRingStatus}", (10, 30), cv.FONT_HERSHEY_SIMPLEX, fontSize, (255, 255, 255) 
+               if (oRingStatus == "PASSED") 
+                else (0, 0, 255), 2)
+    #Annotating the image with the execution time.
+    cv.putText(rgb, f"Time: {endTime:.2f}", (25, 95), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
     #We can show the image using the OpenCV open function
+    cv.imshow(f"O-Ring {i}", rgb)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
-oRingMean = np.mean(allORingAreas)
-print("\n Mean O-Ring Area: , ", oRingMean)
-print("------")
-
-for i in range(len(cleanedImages)):
-    areaOfRing(cleanedImages[i], i + 1)
+    

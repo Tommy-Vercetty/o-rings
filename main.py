@@ -175,7 +175,7 @@ def oRingCircularityEvaluation(cleanedImage, oRingNumber, circularityTruncationP
     else: 
         ringCircularity = 4 * np.pi * (ringArea / (ringPerimeter ** 2))
     
-    print(f"O-Ring {oRingNumber} Circularity: {ringCircularity:.3f}")
+    print(f"Circularity: {ringCircularity:.3f}")
 
     if ringCircularity < circularityTruncationPoint:
         print(f"O-Ring {oRingNumber}: FAULTY\n")
@@ -326,18 +326,23 @@ for i in range(1, 16):
     #    print("O-Ring likely misclassified.")
     #    thresholdedImage = 255 - thresholdedImage
 
-    fontSize = 0.5
     rgb = cv.cvtColor(thresholdedImage, cv.COLOR_GRAY2RGB)
+    northPadding = 50
+    paddedRGB = cv.copyMakeBorder(
+    rgb, top = northPadding, bottom = 0, left = 0, right = 0,
+    borderType = cv.BORDER_CONSTANT, value = (0, 0, 0)
+    )       
+    fontSize = 0.4
     #Annotating the image. We are adding the word Hello in colour blue on the image
-    cv.putText(rgb, f"Image: {i}", (10, 20), cv.FONT_HERSHEY_SIMPLEX, fontSize, (255, 255, 255))
+    cv.putText(paddedRGB, f"O-Ring: {i}", (10, 20), cv.FONT_HERSHEY_SIMPLEX, fontSize, (255, 255, 255))
     #Annotating the image with whether it is FAULTY or PASS.
-    cv.putText(rgb, f"Status: {oRingStatus}", (10, 30), cv.FONT_HERSHEY_SIMPLEX, fontSize, (255, 255, 255) 
+    cv.putText(paddedRGB, f"Status: {oRingStatus}", (10, 40), cv.FONT_HERSHEY_SIMPLEX, fontSize, (0, 255, 0) 
                if (oRingStatus == "PASSED") 
-                else (0, 0, 255), 2)
+                else (0, 0, 255))
     #Annotating the image with the execution time.
-    cv.putText(rgb, f"Time: {endTime:.2f}", (25, 95), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+    cv.putText(paddedRGB, f"Time: {endTime:.2f}s", (10, 60), cv.FONT_HERSHEY_SIMPLEX, fontSize, (255, 255, 255))
     #We can show the image using the OpenCV open function
-    cv.imshow(f"O-Ring {i}", rgb)
+    cv.imshow(f"O-Ring {i}", paddedRGB)
     cv.waitKey(0)
     cv.destroyAllWindows()
 
